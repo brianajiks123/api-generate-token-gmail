@@ -443,7 +443,39 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       );
 
       if (isTwoStepVerif) {
-        logger.warn("HALAMAN 2-STEP VERIFICATION TERDETEKSI — MENUNGGU KONFIRMASI DI HP...");
+        logger.warn("HALAMAN 2-STEP VERIFICATION TERDETEKSI");
+
+        // Coba klik opsi "Tap Yes" (selection page) jika muncul
+        const clickedYesOption = await page.evaluate(() => {
+          // Cari semua list item / div yang mengandung teks "Tap Yes" atau "Yes"
+          const xpathPatterns = [
+            "//*[contains(text(),'Tap Yes on the device your recovery email')]",
+            "//*[contains(text(),'Tap Yes on your phone or tablet')]",
+            "//*[contains(text(),'Tap Yes')]",
+          ];
+          for (const xpath of xpathPatterns) {
+            const result = document.evaluate(
+              xpath, document, null,
+              XPathResult.FIRST_ORDERED_NODE_TYPE, null
+            );
+            const el = result.singleNodeValue;
+            if (el) {
+              // Klik elemen atau parent yang bisa diklik
+              const clickable = el.closest("li") || el.closest("[role='link']") ||
+                                el.closest("[role='button']") || el.closest("a") || el;
+              clickable.click();
+              return true;
+            }
+          }
+          return false;
+        });
+
+        if (clickedYesOption) {
+          logger.info("OPSI 'TAP YES' BERHASIL DIKLIK — MENUNGGU KONFIRMASI DI HP...");
+        } else {
+          logger.warn("OPSI 'TAP YES' TIDAK DITEMUKAN — MENUNGGU KONFIRMASI MANUAL DI HP...");
+        }
+
         try {
           await page.waitForFunction(
             () => !window.location.href.includes("/signin/challenge/"),

@@ -227,9 +227,11 @@ curl -X POST http://localhost:4000/code \
 **⏳ Scenario 7 — Account with 2FA enabled**
 
 - Input: valid email/password, account has 2-Step Verification enabled
-- Puppeteer detects the `/signin/challenge/` page and waits for manual confirmation
+- Puppeteer detects the `/signin/challenge/` page
+- If Google shows a **method selection page**, Puppeteer automatically clicks **"Tap Yes on the device your recovery email is signed into"**
+- After clicking, the user must confirm by tapping **Yes** on their phone or recovery device
 - Timeout: **120 seconds**
-- If confirmed on phone within 120 seconds → process continues, success response
+- If confirmed within 120 seconds → process continues, success response
 - If not confirmed within 120 seconds → Expected response `400 Bad Request`:
 
 ```json
@@ -238,6 +240,8 @@ curl -X POST http://localhost:4000/code \
   "message": "Gagal saat verifikasi google dan mengambil code."
 }
 ```
+
+> **Note:** If the "Tap Yes" option is not found on the page (e.g., Google skips the selection page and shows the confirmation screen directly), the flow falls back gracefully to waiting for manual confirmation.
 
 ---
 
@@ -324,7 +328,7 @@ Example log output for a successful flow:
 |---|---|---|
 | Browser does not open | Puppeteer not installed correctly | Run `npm install` again |
 | Login fails / timeout | Google detects bot or CAPTCHA appears | Retry; use an account that has previously logged in so a session is saved in `UserData/` |
-| `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, confirm on phone within 120 seconds |
+| `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, Puppeteer will auto-select "Tap Yes" and wait for confirmation on phone/recovery device within 120 seconds |
 | Token exchange fails | Wrong `clientId` or `clientSecret` | Verify credentials in Google Cloud Console |
 | `redirect_uri_mismatch` | Redirect URI not registered in Google Cloud | Add `http://localhost:4000/redirect` to Authorized redirect URIs |
 | `403 access_denied` | Email not registered as a Test User | Add the email in OAuth Consent Screen → Test Users |
@@ -338,7 +342,7 @@ Example log output for a successful flow:
 ## Important Notes
 
 - **Security:** Do not commit the `.env` file to the repository. Make sure `.env` is listed in `.gitignore`.
-- **2FA:** If the account has 2FA enabled, Puppeteer will wait for manual phone confirmation for up to **120 seconds**. If not confirmed in time, the request fails with `FAILED_GET_CODE`.
+- **2FA:** If the account has 2FA enabled, Puppeteer will automatically click the **"Tap Yes on the device your recovery email is signed into"** option on the method selection page, then wait for the user to confirm on their phone/recovery device for up to **120 seconds**. If not confirmed in time, the request fails with `FAILED_GET_CODE`.
 - **Headless mode:** The browser runs in `headless: false` mode (visible). This is required to avoid being detected as a bot by Google.
 - **Saved session:** The `UserData/` folder stores the Puppeteer browser session. If the account has logged in before, subsequent requests will be faster as they skip the email/password input step.
 - **config.json:** This file is used as a temporary intermediary to pass the authorization code between processes. Its contents are overwritten on every new `POST /code` request.
