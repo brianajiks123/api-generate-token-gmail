@@ -1,49 +1,65 @@
 # API Generate Google OAuth2 Token
 
-REST API berbasis **Express.js** yang mengotomatisasi proses login Google menggunakan **Puppeteer** untuk mendapatkan OAuth2 Authorization Code, lalu menukarnya dengan **Refresh Token** melalui Google OAuth2 API.
+A REST API built with **Express.js** that automates the Google login process using **Puppeteer** to obtain an OAuth2 Authorization Code, then exchanges it for a **Refresh Token** via the Google OAuth2 API.
 
 ---
 
-## Daftar Isi
+## Table of Contents
 
-- [Cara Kerja](#cara-kerja)
-- [Prasyarat](#prasyarat)
-- [Instalasi](#instalasi)
-- [Konfigurasi](#konfigurasi)
-- [Menjalankan Server](#menjalankan-server)
-- [Penggunaan API](#penggunaan-api)
-- [Struktur Project](#struktur-project)
+- [How It Works](#how-it-works)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Running the Server](#running-the-server)
+- [API Usage](#api-usage)
+- [Project Structure](#project-structure)
+- [Logging](#logging)
 - [Troubleshooting](#troubleshooting)
-- [Catatan Penting](#catatan-penting)
+- [Important Notes](#important-notes)
 
 ---
 
-## Cara Kerja
+## How It Works
 
 ```
-Client → POST /code → Puppeteer login Google → Redirect ke /redirect (simpan code) → Tukar code ke token → Return token
+Client → POST /code → [Serial Queue] → Puppeteer logs into Google → GET /redirect (saves code) → Exchange code for token → Return token
 ```
 
-1. Client mengirim `POST /code` dengan kredensial Google dan OAuth client credentials
-2. Puppeteer membuka browser Chrome dan melakukan login ke akun Google secara otomatis
-3. Setelah login, Google meredirect ke `/redirect` dengan authorization code
-4. Server menukar authorization code ke token melalui Google OAuth2 API
-5. Response berisi `access_token`, `refresh_token`, dan informasi token lainnya
+1. The client sends `POST /code` with Google credentials and OAuth client credentials
+2. The server queues the request — only one process runs at a time
+3. Puppeteer opens a Chrome browser (singleton, reused across requests) and automatically logs into Google with stealth mode enabled
+4. After login, Google redirects to `/redirect` with an authorization code
+5. The server exchanges the authorization code for a token via the Google OAuth2 API (`https://oauth2.googleapis.com/token`)
+6. The response contains `access_token`, `refresh_token`, and other token information
+
+### Google Page Handling
+
+Puppeteer automatically handles various Google page states:
+
+| Condition | Handling |
+|---|---|
+| Account Chooser | Selects the matching account, or clicks "Use another account" |
+| Unverified App Warning | Automatically clicks Continue |
+| Signing Back In | Automatically clicks Continue |
+| Consent Summary | Automatically clicks Continue |
+| Signin Rejected | Clears cookies & session, then retries |
+| 2-Step Verification | Waits for manual confirmation on phone (120-second timeout) |
+| Active session (UserData exists) | Skips email/password input, fetches code directly |
 
 ---
 
-## Prasyarat
+## Prerequisites
 
-- **Node.js** v18 atau lebih baru
-- **Google Cloud Project** dengan OAuth 2.0 Client ID yang sudah dikonfigurasi
-- Akun Google yang akan digunakan **tidak mengaktifkan 2FA**
-- Akun Google sudah terdaftar sebagai **Test User** di Google Cloud Console (jika app masih berstatus *Testing*)
+- **Node.js** v18 or later
+- A **Google Cloud Project** with a configured OAuth 2.0 Client ID
+- The Google account used should ideally **not have 2FA enabled** (if 2FA is active, manual phone confirmation is required within a 120-second timeout)
+- The Google account must be registered as a **Test User** in Google Cloud Console (if the app is still in *Testing* status)
 
-> Lihat panduan lengkap setup Google Cloud Console di [`docs/GOOGLE_CLOUD_SETUP.md`](docs/GOOGLE_CLOUD_SETUP.md).
+> See the full Google Cloud Console setup guide at [`docs/GOOGLE_CLOUD_SETUP.md`](docs/GOOGLE_CLOUD_SETUP.md).
 
 ---
 
-## Instalasi
+## Installation
 
 ```bash
 npm install
@@ -51,51 +67,49 @@ npm install
 
 ---
 
-## Konfigurasi
+## Configuration
 
-Buat file `.env` di root project:
+Create a `.env` file in the project root:
 
 ```env
 urlRedirect=http://localhost:4000/redirect
 scopeApp=openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive
 tokenUri=https://oauth2.googleapis.com/token
-clientID=<your_google_client_id>
-clientSecret=<your_google_client_secret>
+LOG_LEVEL=debug
 ```
 
-| Variable       | Deskripsi                                              |
-|----------------|--------------------------------------------------------|
-| `urlRedirect`  | Redirect URI yang terdaftar di Google Cloud Console    |
-| `scopeApp`     | Scope OAuth2 yang diminta (URL-encoded)                |
-| `tokenUri`     | Endpoint token Google OAuth2                           |
-| `clientID`     | Client ID dari Google Cloud Console                    |
-| `clientSecret` | Client Secret dari Google Cloud Console                |
+| Variable      | Required | Description                                                                    |
+|---------------|----------|--------------------------------------------------------------------------------|
+| `urlRedirect` | ✅       | Redirect URI registered in Google Cloud Console                                |
+| `scopeApp`    | ✅       | Requested OAuth2 scopes (URL-encoded)                                          |
+| `tokenUri`    | ✅       | Google OAuth2 token endpoint                                                   |
+| `LOG_LEVEL`   | ❌       | Winston log level: `error`, `warn`, `info`, `debug` (default: `debug`)         |
 
-> `clientID` dan `clientSecret` bisa diperoleh dari [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials.
+> **Note:** `clientId` and `clientSecret` are **not** stored in `.env` — they are sent per-request via the `POST /code` request body. This allows a single server to serve multiple different OAuth clients.
 
 ---
 
-## Menjalankan Server
+## Running the Server
 
 ```bash
 node server.js
 ```
 
-atau
+or
 
 ```bash
 npm start
 ```
 
-Server berjalan di `http://localhost:4000`.
+The server runs at `http://localhost:4000`.
 
 ---
 
-## Penggunaan API
+## API Usage
 
 ### `POST /code`
 
-Endpoint utama. Membuka browser, login ke Google, dan mengembalikan OAuth2 token.
+The main endpoint. Opens a browser, logs into Google, and returns an OAuth2 token.
 
 **Request**
 
@@ -113,16 +127,18 @@ Content-Type: application/json
 }
 ```
 
-| Field          | Tipe   | Wajib | Deskripsi                    |
-|----------------|--------|-------|------------------------------|
-| `email`        | string | ✅    | Email akun Google            |
-| `password`     | string | ✅    | Password akun Google         |
-| `clientId`     | string | ✅    | OAuth2 Client ID             |
-| `clientSecret` | string | ✅    | OAuth2 Client Secret         |
+| Field          | Type   | Required | Description                  |
+|----------------|--------|----------|------------------------------|
+| `email`        | string | ✅       | Google account email         |
+| `password`     | string | ✅       | Google account password      |
+| `clientId`     | string | ✅       | OAuth2 Client ID             |
+| `clientSecret` | string | ✅       | OAuth2 Client Secret         |
 
-> ⚠️ Proses ini membuka browser Chrome secara otomatis. Jangan lakukan interaksi manual selama proses berlangsung. Estimasi waktu: **30–60 detik**.
+> ⚠️ This process opens Chrome automatically. Do not interact with the browser manually while it is running. Estimated time: **30–60 seconds** (faster if a session is already saved in `UserData/`).
 
-**Response Sukses — `200 OK`**
+> ℹ️ Requests are processed **serially** — if another request is already running, the new one is queued and processed after the previous one completes.
+
+**Success Response — `200 OK`**
 
 ```json
 {
@@ -139,15 +155,16 @@ Content-Type: application/json
 }
 ```
 
-**Response Error**
+**Error Responses**
 
-| Status | Body | Penyebab |
-|--------|------|----------|
-| `400` | `{ "status": "fail", "message": "Gagal, masukkan data dengan benar." }` | Salah satu field request tidak dikirim |
-| `400` | `{ "status": "fail", "message": "Gagal saat verifikasi google dan mengambil code." }` | Email/password salah, atau Google mendeteksi bot |
-| `500` | `{ "status": "error", "message": "invalid_client" }` | `clientId` atau `clientSecret` tidak valid |
+| Status | Body | Cause |
+|--------|------|-------|
+| `400` | `{ "status": "fail", "message": "Gagal, masukkan data dengan benar." }` | One or more required fields are missing |
+| `400` | `{ "status": "fail", "message": "Gagal saat verifikasi google dan mengambil code." }` | Wrong email/password, bot detected by Google, or 2FA timeout |
+| `500` | `{ "status": "error", "message": "Terjadi kegagalan pada server." }` | Unexpected server error |
+| `500` | `{ "status": "error", "message": "invalid_client" }` | Invalid `clientId` or `clientSecret` (message from Google) |
 
-**Contoh cURL**
+**cURL Example**
 
 ```bash
 curl -X POST http://localhost:4000/code \
@@ -164,7 +181,7 @@ curl -X POST http://localhost:4000/code \
 
 ### `GET /redirect`
 
-Endpoint callback OAuth2. Dipanggil otomatis oleh Google setelah proses otorisasi — tidak perlu dipanggil manual dalam alur normal.
+The OAuth2 callback endpoint. Called automatically by Google after the authorization flow — **no need to call this manually** in normal usage.
 
 **Request**
 
@@ -180,52 +197,76 @@ GET http://localhost:4000/redirect?code=<authorization_code>
 }
 ```
 
-Server menyimpan `code` ke `config.json` sebagai media perantara sementara.
+The server saves the `code` to `config.json` as a temporary intermediary, which is then read by the Puppeteer service to exchange for a token.
 
 ---
 
-## Struktur Project
+## Project Structure
 
 ```
 .
-├── server.js               # Entry point, definisi route Express
-├── puppeteerService.js     # Logic Puppeteer (login Google & token exchange)
+├── server.js                   # Entry point — Express app, route definitions, request logger middleware
+├── puppeteerService.js         # Core logic — Puppeteer browser singleton, request queue, Google login, token exchange
 ├── src/
 │   └── utils/
-│       └── logger.js       # Logger berbasis Winston (WIB timezone)
+│       └── logger.js           # Winston-based logger (WIB timezone, file & console output)
 ├── logs/
-│   ├── combined.log        # Semua log
-│   └── error.log           # Log level error saja
+│   ├── combined.log            # All logs (all levels)
+│   └── error.log               # Error-level logs only
 ├── docs/
-│   └── GOOGLE_CLOUD_SETUP.md  # Panduan setup Google Cloud Console
-├── UserData/               # Profil browser Puppeteer (session tersimpan)
-├── config.json             # Penyimpanan sementara authorization code
-├── .env                    # Konfigurasi environment (jangan di-commit)
-├── TESTING.md              # Panduan testing lengkap
+│   ├── GOOGLE_CLOUD_SETUP.md   # Google Cloud Console setup guide
+│   └── TESTING.md              # Full testing guide for all endpoints and scenarios
+├── UserData/                   # Puppeteer browser profile (sessions & cookies stored here)
+├── config.json                 # Temporary storage for the authorization code between processes
+├── .env                        # Environment configuration (do not commit)
 └── package.json
 ```
 
 ---
 
-## Troubleshooting
+## Logging
 
-| Masalah | Kemungkinan Penyebab | Solusi |
-|---|---|---|
-| Browser tidak terbuka | Puppeteer belum terinstall | Jalankan `npm install` ulang |
-| Login gagal / timeout | Google mendeteksi bot atau CAPTCHA muncul | Coba lagi, atau gunakan akun yang sudah pernah login di browser tersebut |
-| `FAILED_GET_CODE` | Email/password salah atau 2FA aktif | Pastikan kredensial benar dan 2FA dinonaktifkan |
-| `500 invalid_client` | `clientId` atau `clientSecret` salah | Verifikasi credentials di Google Cloud Console |
-| `redirect_uri_mismatch` | Redirect URI belum didaftarkan | Tambahkan `http://localhost:4000/redirect` di Authorized redirect URIs |
-| `403 access_denied` | Email belum terdaftar sebagai Test User | Tambahkan email di OAuth Consent Screen → Test Users |
-| Server tidak bisa diakses | Port 4000 sudah digunakan | Ganti port di `server.js` atau hentikan proses lain di port 4000 |
+Logs use **Winston** with timestamps in **WIB (UTC+7)** timezone.
+
+| File | Contents |
+|---|---|
+| `logs/combined.log` | All logs (all levels) |
+| `logs/error.log` | Error-level logs only |
+| Console | All logs with color (non-production only) |
+
+Log format:
+```
+YYYY-MM-DD HH:MM:SS [level]: message
+```
+
+The log level can be controlled via the `LOG_LEVEL` environment variable in `.env` (default: `debug`).
+
+In production, set `NODE_ENV=production` to disable console output.
 
 ---
 
-## Catatan Penting
+## Troubleshooting
 
-- **Keamanan:** Jangan commit file `.env` ke repository. Pastikan `.env` sudah ada di `.gitignore`.
-- **2FA:** Akun Google yang digunakan harus **menonaktifkan 2FA**, karena Puppeteer tidak dapat menangani verifikasi dua langkah secara otomatis.
-- **Headless mode:** Browser berjalan dalam mode `headless: false` (terlihat). Ini diperlukan agar proses login tidak terdeteksi sebagai bot oleh Google.
-- **Session tersimpan:** Folder `UserData/` menyimpan sesi browser. Jika akun sudah pernah login sebelumnya, proses berikutnya akan lebih cepat karena memanfaatkan session yang ada.
-- **Request queue:** Server memproses satu request `POST /code` dalam satu waktu. Request berikutnya akan dimasukkan ke antrian dan diproses secara berurutan.
-- **Logging:** Log tersimpan di folder `logs/`. Level log bisa dikontrol via environment variable `LOG_LEVEL` (default: `debug`).
+| Problem | Likely Cause | Solution |
+|---|---|---|
+| Browser does not open | Puppeteer not installed correctly | Run `npm install` again |
+| Login fails / timeout | Google detects bot or CAPTCHA appears | Retry; use an account that has previously logged in so a session is saved in `UserData/` |
+| `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, confirm on phone within 120 seconds |
+| `500 invalid_client` | Wrong `clientId` or `clientSecret` | Verify credentials in Google Cloud Console |
+| `redirect_uri_mismatch` | Redirect URI not registered | Add `http://localhost:4000/redirect` to Authorized redirect URIs |
+| `403 access_denied` | Email not registered as a Test User | Add the email in OAuth Consent Screen → Test Users |
+| `This app isn't verified` | App is still in Testing status | Click **Advanced** → **Go to app (unsafe)**, or register the email as a Test User |
+| Server not accessible | Port 4000 already in use | Stop the other process on port 4000, or change the port in `server.js` |
+| Request takes too long | Previous request still processing (queue) | Wait for the previous request to finish; requests are processed serially |
+
+---
+
+## Important Notes
+
+- **Security:** Do not commit the `.env` file to the repository. Make sure `.env` is listed in `.gitignore`.
+- **2FA:** If the account has 2FA enabled, Puppeteer will wait for manual phone confirmation for up to **120 seconds**. If not confirmed in time, the request fails with `FAILED_GET_CODE`.
+- **Headless mode:** The browser runs in `headless: false` mode (visible). This is required to avoid being detected as a bot by Google.
+- **Saved session:** The `UserData/` folder stores the Puppeteer browser session. If the account has logged in before, subsequent requests will be faster as they skip the email/password input step.
+- **Request queue:** The server processes one `POST /code` request at a time using a serial queue. Subsequent requests wait until the current one finishes.
+- **Browser singleton:** The Puppeteer browser instance is reused across requests for efficiency. A new browser is only launched if the previous instance disconnects.
+- **config.json:** This file is used as a temporary intermediary to pass the authorization code between the Puppeteer process and the server. Its contents are overwritten on every new `POST /code` request.

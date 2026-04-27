@@ -1,189 +1,204 @@
-# Setup Google Cloud Console
+# Google Cloud Console Setup
 
-Panduan lengkap untuk menyiapkan Google Cloud Console dari awal agar project **api-generate-token-gmail** dapat berjalan.
-
----
-
-## Daftar Isi
-
-1. [Buat Project Baru](#1-buat-project-baru)
-2. [Aktifkan Gmail API dan Google Drive API](#2-aktifkan-gmail-api-dan-google-drive-api)
-3. [Konfigurasi OAuth Consent Screen](#3-konfigurasi-oauth-consent-screen)
-4. [Buat OAuth 2.0 Client ID](#4-buat-oauth-20-client-id)
-5. [Tambahkan Redirect URI](#5-tambahkan-redirect-uri)
-6. [Tambahkan Test User](#6-tambahkan-test-user)
-7. [Salin Credentials ke .env](#7-salin-credentials-ke-env)
-8. [Verifikasi Konfigurasi](#8-verifikasi-konfigurasi)
+A complete guide to setting up Google Cloud Console from scratch so the **api-generate-token-gmail** project can run correctly.
 
 ---
 
-## 1. Buat Project Baru
+## Table of Contents
 
-1. Buka [https://console.cloud.google.com](https://console.cloud.google.com)
-2. Login menggunakan akun Google Anda
-3. Di bagian atas halaman, klik dropdown nama project (sebelah kiri tulisan **Google Cloud**)
-4. Klik tombol **New Project**
-5. Isi form:
-   - **Project name**: `api-generate-token-gmail` (atau nama lain sesuai keinginan)
-   - **Location**: biarkan default (*No organization*)
-6. Klik **Create**
-7. Tunggu beberapa detik hingga project selesai dibuat
-8. Pastikan project baru sudah terpilih di dropdown atas
+1. [Create a New Project](#1-create-a-new-project)
+2. [Enable Gmail API and Google Drive API](#2-enable-gmail-api-and-google-drive-api)
+3. [Configure the OAuth Consent Screen](#3-configure-the-oauth-consent-screen)
+4. [Create an OAuth 2.0 Client ID](#4-create-an-oauth-20-client-id)
+5. [Add a Redirect URI](#5-add-a-redirect-uri)
+6. [Add Test Users](#6-add-test-users)
+7. [Configure the .env File](#7-configure-the-env-file)
+8. [Verify the Configuration](#8-verify-the-configuration)
 
 ---
 
-## 2. Aktifkan Gmail API dan Google Drive API
+## 1. Create a New Project
 
-API perlu diaktifkan agar OAuth token yang dihasilkan bisa mengakses Gmail dan Google Drive.
-
-### Aktifkan Gmail API
-
-1. Buka [https://console.cloud.google.com/apis/library](https://console.cloud.google.com/apis/library)
-2. Di kolom pencarian, ketik `Gmail API`
-3. Klik hasil **Gmail API**
-4. Klik tombol **Enable**
-
-### Aktifkan Google Drive API
-
-1. Kembali ke [https://console.cloud.google.com/apis/library](https://console.cloud.google.com/apis/library)
-2. Di kolom pencarian, ketik `Google Drive API`
-3. Klik hasil **Google Drive API**
-4. Klik tombol **Enable**
+1. Open [https://console.cloud.google.com](https://console.cloud.google.com)
+2. Sign in with your Google account
+3. At the top of the page, click the project dropdown (next to the **Google Cloud** logo)
+4. Click **New Project**
+5. Fill in the form:
+   - **Project name**: `api-generate-token-gmail` (or any name you prefer)
+   - **Location**: leave as default (*No organization*)
+6. Click **Create**
+7. Wait a few seconds for the project to be created
+8. Make sure the new project is selected in the top dropdown
 
 ---
 
-## 3. Konfigurasi OAuth Consent Screen
+## 2. Enable Gmail API and Google Drive API
 
-OAuth Consent Screen adalah halaman izin yang muncul saat user login. Ini wajib dikonfigurasi sebelum membuat Client ID.
+These APIs must be enabled so the OAuth token can access Gmail and Google Drive as defined by the scopes in `.env`.
 
-1. Buka [https://console.cloud.google.com/apis/credentials/consent](https://console.cloud.google.com/apis/credentials/consent)
-2. Pilih **External** sebagai User Type
-   > Pilih External agar bisa digunakan oleh akun Gmail manapun
-3. Klik **Create**
-4. Isi form **App information**:
+### Enable Gmail API
+
+1. Open [https://console.cloud.google.com/apis/library](https://console.cloud.google.com/apis/library)
+2. Search for `Gmail API`
+3. Click the **Gmail API** result
+4. Click **Enable**
+
+### Enable Google Drive API
+
+1. Go back to [https://console.cloud.google.com/apis/library](https://console.cloud.google.com/apis/library)
+2. Search for `Google Drive API`
+3. Click the **Google Drive API** result
+4. Click **Enable**
+
+> **Note:** If the scopes in `.env` are changed (e.g., adding or removing scopes), make sure the corresponding APIs are also enabled here.
+
+---
+
+## 3. Configure the OAuth Consent Screen
+
+The OAuth Consent Screen is the permission page shown to users during login. It must be configured before creating a Client ID.
+
+1. Open [https://console.cloud.google.com/apis/credentials/consent](https://console.cloud.google.com/apis/credentials/consent)
+2. Select **External** as the User Type
+   > Choose External so any Gmail account can be used (not just accounts within an organization)
+3. Click **Create**
+4. Fill in the **App information** form:
    - **App name**: `api-generate-token-gmail`
-   - **User support email**: pilih email Anda dari dropdown
-   - **App logo**: kosongkan (opsional)
-5. Scroll ke bawah ke bagian **Developer contact information**:
-   - **Email addresses**: isi dengan email Anda
-6. Klik **Save and Continue**
+   - **User support email**: select your email from the dropdown
+   - **App logo**: leave blank (optional)
+5. Scroll down to **Developer contact information**:
+   - **Email addresses**: enter your email
+6. Click **Save and Continue**
 
-### Halaman Scopes
+### Scopes Page
 
-1. Klik **Add or Remove Scopes**
-2. Cari dan centang scope berikut satu per satu:
+Add the scopes that match the `scopeApp` value in your `.env` file:
+
+1. Click **Add or Remove Scopes**
+2. Find and check each of the following scopes:
    - `openid`
    - `profile`
    - `email`
    - `https://mail.google.com/` *(Gmail — full access)*
    - `https://www.googleapis.com/auth/drive` *(Google Drive — full access)*
-3. Klik **Update**
-4. Klik **Save and Continue**
+3. Click **Update**
+4. Click **Save and Continue**
 
-### Halaman Test Users
+> **Important:** The scopes registered here must match the `scopeApp` value in `.env`. A mismatch will cause Google to return `access_denied` or `invalid_scope`.
 
-> Karena app masih dalam status **Testing**, hanya email yang didaftarkan di sini yang bisa login.
+### Test Users Page
 
-1. Klik **Add Users**
-2. Masukkan email Gmail yang akan digunakan untuk generate token
-3. Klik **Add**
-4. Klik **Save and Continue**
+> Because the app is still in **Testing** status, only emails registered here can log in.
 
-### Halaman Summary
+1. Click **Add Users**
+2. Enter the Gmail address that will be used to generate tokens
+3. Click **Add**
+4. Click **Save and Continue**
 
-1. Review konfigurasi
-2. Klik **Back to Dashboard**
+### Summary Page
+
+1. Review the configuration
+2. Click **Back to Dashboard**
 
 ---
 
-## 4. Buat OAuth 2.0 Client ID
+## 4. Create an OAuth 2.0 Client ID
 
-1. Buka [https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
-2. Klik **+ Create Credentials** di bagian atas
-3. Pilih **OAuth client ID**
-4. Isi form:
-   - **Application type**: pilih **Web application**
+1. Open [https://console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
+2. Click **+ Create Credentials** at the top
+3. Select **OAuth client ID**
+4. Fill in the form:
+   - **Application type**: select **Web application**
    - **Name**: `api-generate-token-gmail`
-5. Lanjut ke langkah berikutnya untuk menambahkan Redirect URI
+5. Continue to the next step to add a Redirect URI
 
 ---
 
-## 5. Tambahkan Redirect URI
+## 5. Add a Redirect URI
 
-Masih di halaman pembuatan OAuth Client ID:
+Still on the OAuth Client ID creation page:
 
-1. Scroll ke bagian **Authorized redirect URIs**
-2. Klik **+ Add URI**
-3. Masukkan URI berikut:
+1. Scroll to **Authorized redirect URIs**
+2. Click **+ Add URI**
+3. Enter the following URI (must exactly match the `urlRedirect` value in `.env`):
    ```
    http://localhost:4000/redirect
    ```
-4. Klik **Create**
+4. Click **Create**
 
-Setelah berhasil, Google akan menampilkan popup berisi:
+After success, Google will display a popup containing:
 - **Client ID**
 - **Client Secret**
 
-> ⚠️ **Simpan kedua nilai ini**, akan digunakan di file `.env`.
+> ⚠️ **Save both values** — they will be used as the `clientId` and `clientSecret` parameters when calling `POST /code`.
 
-Klik **Download JSON** untuk menyimpan credentials sebagai backup, lalu klik **OK**.
+Click **Download JSON** to save the credentials as a backup, then click **OK**.
 
----
-
-## 6. Tambahkan Test User
-
-Jika belum dilakukan di langkah 3, tambahkan test user sekarang:
-
-1. Buka [https://console.cloud.google.com/apis/credentials/consent](https://console.cloud.google.com/apis/credentials/consent)
-2. Klik tab **Test users**
-3. Klik **+ Add Users**
-4. Masukkan email Gmail yang akan digunakan
-5. Klik **Save**
-
-> Selama app masih berstatus **Testing**, maksimal 100 test user yang bisa ditambahkan.
+> **Note:** Unlike some other projects, `clientId` and `clientSecret` are **not** stored in `.env` in this project. They are sent per-request via the `POST /code` request body, allowing a single server to serve multiple different OAuth clients.
 
 ---
 
-## 7. Salin Credentials ke .env
+## 6. Add Test Users
 
-Buka file `.env` di root project dan isi dengan nilai dari Google Cloud Console:
+If not done in step 3, add test users now:
+
+1. Open [https://console.cloud.google.com/apis/credentials/consent](https://console.cloud.google.com/apis/credentials/consent)
+2. Click the **Test users** tab
+3. Click **+ Add Users**
+4. Enter the Gmail address that will be used to generate tokens
+5. Click **Save**
+
+> While the app is in **Testing** status, a maximum of **100 test users** can be added. Only registered emails can complete the OAuth flow.
+
+---
+
+## 7. Configure the .env File
+
+Open the `.env` file in the project root. The values to configure:
 
 ```env
 urlRedirect=http://localhost:4000/redirect
 scopeApp=openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive
-clientSecret=<CLIENT_SECRET_DARI_GOOGLE_CLOUD>
 tokenUri=https://oauth2.googleapis.com/token
-clientID=<CLIENT_ID_DARI_GOOGLE_CLOUD>
+LOG_LEVEL=debug
 ```
 
-Ganti `<CLIENT_ID_DARI_GOOGLE_CLOUD>` dan `<CLIENT_SECRET_DARI_GOOGLE_CLOUD>` dengan nilai yang didapat dari langkah 5.
+| Variable      | Example / Default Value                                                                                   | Notes |
+|---------------|-----------------------------------------------------------------------------------------------------------|-------|
+| `urlRedirect` | `http://localhost:4000/redirect`                                                                          | Must exactly match the Authorized redirect URI registered in step 5 |
+| `scopeApp`    | `openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive`              | Scopes in URL-encoded format. Must match the scopes registered in the OAuth Consent Screen |
+| `tokenUri`    | `https://oauth2.googleapis.com/token`                                                                     | Google OAuth2 token endpoint — no need to change |
+| `LOG_LEVEL`   | `debug`                                                                                                   | Log level: `error`, `warn`, `info`, `debug` |
 
-**Contoh format Client ID:**
+> **Note:** `clientId` and `clientSecret` are not stored in `.env`. They are sent as body parameters when calling `POST /code`.
+
+**Client ID format example:**
 ```
 463634754737-xxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com
 ```
 
-**Contoh format Client Secret:**
+**Client Secret format example:**
 ```
 GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ---
 
-## 8. Verifikasi Konfigurasi
+## 8. Verify the Configuration
 
-Sebelum menjalankan program, pastikan semua checklist berikut terpenuhi:
+Before running the project, make sure all of the following are in place:
 
-- [ ] Project sudah dibuat di Google Cloud Console
-- [ ] Gmail API sudah diaktifkan
-- [ ] Google Drive API sudah diaktifkan
-- [ ] OAuth Consent Screen sudah dikonfigurasi dengan status **Testing**
-- [ ] Semua scope sudah ditambahkan (openid, profile, email, Gmail, Drive)
-- [ ] Redirect URI `http://localhost:4000/redirect` sudah terdaftar di OAuth Client
-- [ ] Email yang akan digunakan sudah ditambahkan sebagai Test User
-- [ ] File `.env` sudah diisi dengan Client ID dan Client Secret yang benar
+- [ ] Project created in Google Cloud Console
+- [ ] Gmail API enabled
+- [ ] Google Drive API enabled
+- [ ] OAuth Consent Screen configured with status **Testing**
+- [ ] All scopes added: `openid`, `profile`, `email`, `https://mail.google.com/`, `https://www.googleapis.com/auth/drive`
+- [ ] Redirect URI `http://localhost:4000/redirect` registered in Authorized redirect URIs
+- [ ] The email to be used is registered as a Test User
+- [ ] `.env` file is correctly filled in (`urlRedirect`, `scopeApp`, `tokenUri`)
+- [ ] `clientId` and `clientSecret` are noted for use as request parameters
 
-### Jalankan Server
+### Start the Server
 
 ```bash
 node server.js
@@ -191,15 +206,17 @@ node server.js
 
 ### Test via API
 
-Kirim request POST ke `http://localhost:4000/code`:
+Send a POST request to `http://localhost:4000/code`:
 
-```json
-{
-  "email": "your-email@gmail.com",
-  "password": "your-password",
-  "clientId": "your-client-id.apps.googleusercontent.com",
-  "clientSecret": "GOCSPX-your-client-secret"
-}
+```bash
+curl -X POST http://localhost:4000/code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-email@gmail.com",
+    "password": "your-password",
+    "clientId": "your-client-id.apps.googleusercontent.com",
+    "clientSecret": "GOCSPX-your-client-secret"
+  }'
 ```
 
 ---
@@ -208,20 +225,28 @@ Kirim request POST ke `http://localhost:4000/code`:
 
 ### "Couldn't sign you in" / `/signin/rejected`
 
-Redirect URI belum terdaftar. Pastikan `http://localhost:4000/redirect` sudah ada di **Authorized redirect URIs** pada OAuth Client ID.
+Google rejected the login because it detected automation. The server will automatically attempt to clear the session and retry. If it still fails, try again after a moment or use an account that has previously logged in on this browser (session saved in `UserData/`).
 
-### "Access blocked: app's request is invalid"
+### "Access blocked: app's request is invalid" / `redirect_uri_mismatch`
 
-Scope yang diminta tidak sesuai dengan yang didaftarkan di OAuth Consent Screen. Pastikan semua scope di `.env` sudah ditambahkan di langkah 3.
+The redirect URI does not match. Make sure the `urlRedirect` value in `.env` exactly matches the URI registered in **Authorized redirect URIs** on the OAuth Client ID (including the `http://` protocol and `/redirect` path).
+
+### "Access blocked: app's request is invalid" / `invalid_scope`
+
+The requested scopes do not match what was registered in the OAuth Consent Screen. Make sure all scopes in `scopeApp` (`.env`) have been added in step 3.
 
 ### "This app isn't verified"
 
-Normal untuk app yang masih berstatus **Testing**. Klik **Advanced** → **Go to app (unsafe)** untuk melanjutkan. Ini hanya muncul jika email yang login belum terdaftar sebagai Test User.
+This is normal for apps still in **Testing** status. Click **Advanced** → **Go to app (unsafe)** to continue. This only appears if the logged-in email is not registered as a Test User — add the email in OAuth Consent Screen → Test Users.
 
 ### "403: access_denied"
 
-Email yang digunakan belum ditambahkan sebagai Test User. Tambahkan di OAuth Consent Screen → Test Users.
+The email being used is not registered as a Test User. Add it in OAuth Consent Screen → Test Users, then wait 1–2 minutes before trying again.
 
-### Perubahan tidak langsung berlaku
+### "invalid_client"
 
-Setelah menyimpan perubahan di Google Cloud Console (redirect URI, test user, dll), tunggu **1-2 menit** sebelum mencoba kembali karena Google butuh waktu propagasi.
+The `clientId` or `clientSecret` sent in the request body is invalid. Re-verify both values in Google Cloud Console → APIs & Services → Credentials.
+
+### Changes not taking effect immediately
+
+After saving changes in Google Cloud Console (redirect URIs, test users, scopes, etc.), wait **1–2 minutes** before retrying as Google requires time to propagate changes.
