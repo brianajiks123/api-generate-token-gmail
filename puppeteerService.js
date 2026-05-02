@@ -413,6 +413,49 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       await page.keyboard.press("Enter");
 
       await delay(8000);
+      
+      // ── HANDLE CAPTCHA ──────────────────────────────────────────────────────
+      logger.info("CEK APAKAH ADA CAPTCHA...");
+      const hasCaptcha = await page.evaluate(() => {
+        // Cek berbagai indikator captcha
+        const captchaIndicators = [
+          document.querySelector("input[aria-label*='Type the text you hear or see']"),
+          document.querySelector("input[placeholder*='Type the text']"),
+          document.querySelector("textarea[aria-label*='Type the text']"),
+          document.querySelector(".VfPpkd-t08AT-Bz112c-M1sQAe"), // Captcha container
+          document.querySelector("img[alt*='CAPTCHA']"),
+          document.querySelector("div[data-captcha-id]"),
+        ];
+        return captchaIndicators.some(el => el !== null);
+      });
+
+      if (hasCaptcha) {
+        logger.warn("CAPTCHA TERDETEKSI — MENUNGGU USER INPUT CAPTCHA DAN KLIK NEXT");
+        
+        // Tunggu hingga user menginput captcha dan menekan tombol Next
+        try {
+          await page.waitForFunction(
+            () => {
+              // Cek apakah halaman sudah berubah (redirect atau URL berubah)
+              // atau tombol Next sudah diklik dan halaman loading
+              const currentUrl = window.location.href;
+              const isStillOnCaptchaPage = currentUrl.includes("/signin") && 
+                                         !currentUrl.includes("/challenge/");
+              return !isStillOnCaptchaPage;
+            },
+            { timeout: 300000, polling: 2000 } // 5 menit timeout
+          );
+          logger.info("CAPTCHA SELESAI — USER SUDAH MENGINPUT DAN KLIK NEXT");
+          await delay(3000);
+        } catch (captchaTimeoutErr) {
+          logger.error("TIMEOUT MENUNGGU CAPTCHA (5 menit) — USER TIDAK MENGINPUT CAPTCHA");
+          reject(new Error("CAPTCHA_TIMEOUT"));
+          return;
+        }
+      } else {
+        logger.info("CAPTCHA TIDAK TERDETEKSI — LANJUT KE INPUT PASSWORD");
+      }
+
       logger.info("AKSI INPUT PASSWORD + ENTER");
       await page.waitForSelector("input[type='password']", { timeout: 15000 });
       await page.type("input[type='password']", password);

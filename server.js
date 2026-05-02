@@ -71,6 +71,15 @@ app.post("/code", async (req, res) => {
       });
     }
 
+    if (error.message === "CAPTCHA_TIMEOUT") {
+      logger.warn(`POST /code — CAPTCHA_TIMEOUT untuk email: ${email}`);
+      res.statusCode = 400;
+      return res.json({
+        status: "fail",
+        message: "Timeout menunggu input CAPTCHA (5 menit). Silakan coba lagi.",
+      });
+    }
+
     logger.error(`POST /code — server error: ${error.message}`, { stack: error.stack });
     res.statusCode = 500;
     return res.json({
