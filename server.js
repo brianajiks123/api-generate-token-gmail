@@ -94,6 +94,6 @@ app.get("/redirect", async (req, res) => {
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
-app.listen(4000, () => {
-  logger.info("Server berjalan di http://localhost:4000");
+app.listen(4069, () => {
+  logger.info("Server berjalan di http://localhost:4069");
 });

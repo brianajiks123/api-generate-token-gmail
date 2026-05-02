@@ -32,7 +32,7 @@ npm install
 Make sure the `.env` file is filled in correctly:
 
 ```env
-urlRedirect=http://localhost:4000/redirect
+urlRedirect=http://localhost:4069/redirect
 scopeApp=openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive
 tokenUri=https://oauth2.googleapis.com/token
 LOG_LEVEL=debug
@@ -47,7 +47,7 @@ Before testing, make sure the following are configured in Google Cloud Console:
 - Gmail API and Google Drive API are enabled
 - OAuth Consent Screen is configured (status: **Testing**)
 - Registered scopes: `openid`, `profile`, `email`, `https://mail.google.com/`, `https://www.googleapis.com/auth/drive`
-- **Authorized redirect URIs** includes: `http://localhost:4000/redirect`
+- **Authorized redirect URIs** includes: `http://localhost:4069/redirect`
 - The Google account being used is registered as a **Test User**
 
 > See the full setup guide at [`docs/GOOGLE_CLOUD_SETUP.md`](GOOGLE_CLOUD_SETUP.md).
@@ -58,7 +58,7 @@ Before testing, make sure the following are configured in Google Cloud Console:
 node server.js
 ```
 
-The server will run at `http://localhost:4000`. Logs will appear in the console and be saved to the `logs/` folder.
+The server will run at `http://localhost:4069`. Logs will appear in the console and be saved to the `logs/` folder.
 
 ---
 
@@ -71,7 +71,7 @@ The main endpoint for automatically obtaining a refresh token.
 **Request:**
 
 ```
-POST http://localhost:4000/code
+POST http://localhost:4069/code
 Content-Type: application/json
 ```
 
@@ -89,7 +89,7 @@ Content-Type: application/json
 **Using cURL:**
 
 ```bash
-curl -X POST http://localhost:4000/code \
+curl -X POST http://localhost:4069/code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "your_email@gmail.com",
@@ -103,7 +103,7 @@ curl -X POST http://localhost:4000/code \
 
 1. Open Postman
 2. Create a new request → Method: `POST`
-3. URL: `http://localhost:4000/code`
+3. URL: `http://localhost:4069/code`
 4. **Body** tab → select `raw` → format `JSON`
 5. Paste the JSON body above
 6. Click **Send**
@@ -164,7 +164,7 @@ curl -X POST http://localhost:4000/code \
 Example cURL (missing `clientSecret`):
 
 ```bash
-curl -X POST http://localhost:4000/code \
+curl -X POST http://localhost:4069/code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "your_email@gmail.com",
@@ -262,13 +262,13 @@ This endpoint is the **OAuth2 callback** called automatically by Google after th
 **Request:**
 
 ```
-GET http://localhost:4000/redirect?code=<authorization_code>
+GET http://localhost:4069/redirect?code=<authorization_code>
 ```
 
 **cURL Example:**
 
 ```bash
-curl "http://localhost:4000/redirect?code=4%2F0Aci98E8_pX1Afr1UiWwk0VwW1eRG7-xxxx"
+curl "http://localhost:4069/redirect?code=4%2F0Aci98E8_pX1Afr1UiWwk0VwW1eRG7-xxxx"
 ```
 
 **Expected behavior:**
@@ -285,7 +285,7 @@ curl "http://localhost:4000/redirect?code=4%2F0Aci98E8_pX1Afr1UiWwk0VwW1eRG7-xxx
 **Scenario — empty code:**
 
 ```bash
-curl "http://localhost:4000/redirect"
+curl "http://localhost:4069/redirect"
 ```
 
 Response:
@@ -330,10 +330,10 @@ Example log output for a successful flow:
 | Login fails / timeout | Google detects bot or CAPTCHA appears | Retry; use an account that has previously logged in so a session is saved in `UserData/` |
 | `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, Puppeteer will auto-select "Tap Yes" and wait for confirmation on phone/recovery device within 120 seconds |
 | Token exchange fails | Wrong `clientId` or `clientSecret` | Verify credentials in Google Cloud Console |
-| `redirect_uri_mismatch` | Redirect URI not registered in Google Cloud | Add `http://localhost:4000/redirect` to Authorized redirect URIs |
+| `redirect_uri_mismatch` | Redirect URI not registered in Google Cloud | Add `http://localhost:4069/redirect` to Authorized redirect URIs |
 | `403 access_denied` | Email not registered as a Test User | Add the email in OAuth Consent Screen → Test Users |
 | `This app isn't verified` | App is still in Testing status | Click **Advanced** → **Go to app (unsafe)**, or register the email as a Test User |
-| Server not accessible | Port 4000 already in use | Stop the other process on port 4000, or change the port in `server.js` |
+| Server not accessible | Port 4069 already in use | Stop the other process on port 4069, or change the port in `server.js` |
 | Request takes too long | Previous request still processing (queue) | Wait for the previous request to finish |
 | Logs not showing in console | `NODE_ENV=production` is set | Remove or change `NODE_ENV`, or check `logs/combined.log` directly |
 

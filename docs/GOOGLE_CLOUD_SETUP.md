@@ -122,7 +122,7 @@ Still on the OAuth Client ID creation page:
 2. Click **+ Add URI**
 3. Enter the following URI (must exactly match the `urlRedirect` value in `.env`):
    ```
-   http://localhost:4000/redirect
+   http://localhost:4069/redirect
    ```
 4. Click **Create**
 
@@ -157,7 +157,7 @@ If not done in step 3, add test users now:
 Open the `.env` file in the project root. The values to configure:
 
 ```env
-urlRedirect=http://localhost:4000/redirect
+urlRedirect=http://localhost:4069/redirect
 scopeApp=openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive
 tokenUri=https://oauth2.googleapis.com/token
 LOG_LEVEL=debug
@@ -165,7 +165,7 @@ LOG_LEVEL=debug
 
 | Variable      | Example / Default Value                                                                                   | Notes |
 |---------------|-----------------------------------------------------------------------------------------------------------|-------|
-| `urlRedirect` | `http://localhost:4000/redirect`                                                                          | Must exactly match the Authorized redirect URI registered in step 5 |
+| `urlRedirect` | `http://localhost:4069/redirect`                                                                          | Must exactly match the Authorized redirect URI registered in step 5 |
 | `scopeApp`    | `openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive`              | Scopes in URL-encoded format. Must match the scopes registered in the OAuth Consent Screen |
 | `tokenUri`    | `https://oauth2.googleapis.com/token`                                                                     | Google OAuth2 token endpoint — no need to change |
 | `LOG_LEVEL`   | `debug`                                                                                                   | Log level: `error`, `warn`, `info`, `debug` |
@@ -193,7 +193,7 @@ Before running the project, make sure all of the following are in place:
 - [ ] Google Drive API enabled
 - [ ] OAuth Consent Screen configured with status **Testing**
 - [ ] All scopes added: `openid`, `profile`, `email`, `https://mail.google.com/`, `https://www.googleapis.com/auth/drive`
-- [ ] Redirect URI `http://localhost:4000/redirect` registered in Authorized redirect URIs
+- [ ] Redirect URI `http://localhost:4069/redirect` registered in Authorized redirect URIs
 - [ ] The email to be used is registered as a Test User
 - [ ] `.env` file is correctly filled in (`urlRedirect`, `scopeApp`, `tokenUri`)
 - [ ] `clientId` and `clientSecret` are noted for use as request parameters
@@ -206,10 +206,10 @@ node server.js
 
 ### Test via API
 
-Send a POST request to `http://localhost:4000/code`:
+Send a POST request to `http://localhost:4069/code`:
 
 ```bash
-curl -X POST http://localhost:4000/code \
+curl -X POST http://localhost:4069/code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "your-email@gmail.com",
@@ -229,7 +229,7 @@ Google rejected the login because it detected automation. The server will automa
 
 ### "Access blocked: app's request is invalid" / `redirect_uri_mismatch`
 
-The redirect URI does not match. Make sure the `urlRedirect` value in `.env` exactly matches the URI registered in **Authorized redirect URIs** on the OAuth Client ID (including the `http://` protocol and `/redirect` path).
+The redirect URI does not match. Make sure the `urlRedirect` value in `.env` exactly matches the URI registered in **Authorized redirect URIs** on the OAuth Client ID (including the `http://` protocol, port `4069`, and `/redirect` path).
 
 ### "Access blocked: app's request is invalid" / `invalid_scope`
 

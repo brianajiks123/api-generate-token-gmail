@@ -72,7 +72,7 @@ npm install
 Create a `.env` file in the project root:
 
 ```env
-urlRedirect=http://localhost:4000/redirect
+urlRedirect=http://localhost:4069/redirect
 scopeApp=openid%20profile%20email%20https://mail.google.com%20https://www.googleapis.com/auth/drive
 tokenUri=https://oauth2.googleapis.com/token
 LOG_LEVEL=debug
@@ -101,7 +101,7 @@ or
 npm start
 ```
 
-The server runs at `http://localhost:4000`.
+The server runs at `http://localhost:4069`.
 
 ---
 
@@ -114,7 +114,7 @@ The main endpoint. Opens a browser, logs into Google, and returns an OAuth2 toke
 **Request**
 
 ```
-POST http://localhost:4000/code
+POST http://localhost:4069/code
 Content-Type: application/json
 ```
 
@@ -167,7 +167,7 @@ Content-Type: application/json
 **cURL Example**
 
 ```bash
-curl -X POST http://localhost:4000/code \
+curl -X POST http://localhost:4069/code \
   -H "Content-Type: application/json" \
   -d '{
     "email": "your_email@gmail.com",
@@ -186,7 +186,7 @@ The OAuth2 callback endpoint. Called automatically by Google after the authoriza
 **Request**
 
 ```
-GET http://localhost:4000/redirect?code=<authorization_code>
+GET http://localhost:4069/redirect?code=<authorization_code>
 ```
 
 **Response — `200 OK`**
@@ -253,10 +253,10 @@ In production, set `NODE_ENV=production` to disable console output.
 | Login fails / timeout | Google detects bot or CAPTCHA appears | Retry; use an account that has previously logged in so a session is saved in `UserData/` |
 | `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, Puppeteer will auto-select "Tap Yes" option and wait for confirmation on phone/recovery device within 120 seconds |
 | `500 invalid_client` | Wrong `clientId` or `clientSecret` | Verify credentials in Google Cloud Console |
-| `redirect_uri_mismatch` | Redirect URI not registered | Add `http://localhost:4000/redirect` to Authorized redirect URIs |
+| `redirect_uri_mismatch` | Redirect URI not registered | Add `http://localhost:4069/redirect` to Authorized redirect URIs |
 | `403 access_denied` | Email not registered as a Test User | Add the email in OAuth Consent Screen → Test Users |
 | `This app isn't verified` | App is still in Testing status | Click **Advanced** → **Go to app (unsafe)**, or register the email as a Test User |
-| Server not accessible | Port 4000 already in use | Stop the other process on port 4000, or change the port in `server.js` |
+| Server not accessible | Port 4069 already in use | Stop the other process on port 4069, or change the port in `server.js` |
 | Request takes too long | Previous request still processing (queue) | Wait for the previous request to finish; requests are processed serially |
 
 ---
