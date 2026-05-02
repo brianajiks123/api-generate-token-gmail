@@ -417,7 +417,6 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       // ── HANDLE CAPTCHA ──────────────────────────────────────────────────────
       logger.info("CEK APAKAH ADA CAPTCHA...");
       const hasCaptcha = await page.evaluate(() => {
-        // Cek berbagai indikator captcha
         const captchaIndicators = [
           document.querySelector("input[aria-label*='Type the text you hear or see']"),
           document.querySelector("input[placeholder*='Type the text']"),
