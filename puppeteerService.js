@@ -432,18 +432,15 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       if (hasCaptcha) {
         logger.warn("CAPTCHA TERDETEKSI — MENUNGGU USER INPUT CAPTCHA DAN KLIK NEXT");
         
-        // Tunggu hingga user menginput captcha dan menekan tombol Next
         try {
           await page.waitForFunction(
             () => {
-              // Cek apakah halaman sudah berubah (redirect atau URL berubah)
-              // atau tombol Next sudah diklik dan halaman loading
               const currentUrl = window.location.href;
               const isStillOnCaptchaPage = currentUrl.includes("/signin") && 
                                          !currentUrl.includes("/challenge/");
               return !isStillOnCaptchaPage;
             },
-            { timeout: 300000, polling: 2000 } // 5 menit timeout
+            { timeout: 300000, polling: 2000 } // 5 minute timeout
           );
           logger.info("CAPTCHA SELESAI — USER SUDAH MENGINPUT DAN KLIK NEXT");
           await delay(3000);
@@ -487,36 +484,81 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
 
       if (isTwoStepVerif) {
         logger.warn("HALAMAN 2-STEP VERIFICATION TERDETEKSI");
+        await delay(2000);
 
-        // Coba klik opsi "Tap Yes" (selection page) jika muncul
         const clickedYesOption = await page.evaluate(() => {
-          // Cari semua list item / div yang mengandung teks "Tap Yes" atau "Yes"
+          logger.info("MENCARI OPSI 'TAP YES' DI HALAMAN 2-STEP VERIFICATION");
+          
+          const allElements = document.querySelectorAll("*");
+          for (const el of allElements) {
+            const text = el.textContent || "";
+            if ((text.includes("Tap Yes") || text.includes("Tap Yes on your phone") || 
+                 text.includes("Tap Yes on the device")) && el.offsetHeight > 0) {
+              let clickable = el;
+              let depth = 0;
+              while (clickable && depth < 5) {
+                if (clickable.tagName === "LI" || 
+                    clickable.getAttribute("role") === "button" ||
+                    clickable.getAttribute("role") === "link" ||
+                    clickable.tagName === "BUTTON" ||
+                    clickable.tagName === "A" ||
+                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
+                  clickable.click();
+                  return true;
+                }
+                clickable = clickable.parentElement;
+                depth++;
+              }
+            }
+          }
+          
           const xpathPatterns = [
-            "//*[contains(text(),'Tap Yes on the device your recovery email')]",
-            "//*[contains(text(),'Tap Yes on your phone or tablet')]",
+            "//li[contains(., 'Tap Yes')]",
+            "//div[contains(., 'Tap Yes on your phone')]",
+            "//div[contains(., 'Tap Yes on the device')]",
             "//*[contains(text(),'Tap Yes')]",
+            "//button[contains(., 'Tap Yes')]",
           ];
+          
           for (const xpath of xpathPatterns) {
             const result = document.evaluate(
               xpath, document, null,
               XPathResult.FIRST_ORDERED_NODE_TYPE, null
             );
             const el = result.singleNodeValue;
-            if (el) {
-              // Klik elemen atau parent yang bisa diklik
-              const clickable = el.closest("li") || el.closest("[role='link']") ||
-                                el.closest("[role='button']") || el.closest("a") || el;
-              clickable.click();
-              return true;
+            if (el && el.offsetHeight > 0) {
+              let clickable = el;
+              let depth = 0;
+              while (clickable && depth < 5) {
+                if (clickable.tagName === "LI" || 
+                    clickable.getAttribute("role") === "button" ||
+                    clickable.getAttribute("role") === "link" ||
+                    clickable.tagName === "BUTTON" ||
+                    clickable.tagName === "A" ||
+                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
+                  clickable.click();
+                  return true;
+                }
+                clickable = clickable.parentElement;
+                depth++;
+              }
             }
           }
+          
           return false;
         });
 
         if (clickedYesOption) {
           logger.info("OPSI 'TAP YES' BERHASIL DIKLIK — MENUNGGU KONFIRMASI DI HP...");
+          await delay(2000);
         } else {
           logger.warn("OPSI 'TAP YES' TIDAK DITEMUKAN — MENUNGGU KONFIRMASI MANUAL DI HP...");
+          try {
+            await page.screenshot({ path: path.join(__dirname, "debug_2fa_page.png") });
+            logger.debug("SCREENSHOT HALAMAN 2FA DISIMPAN: debug_2fa_page.png");
+          } catch (screenshotErr) {
+            logger.debug(`GAGAL AMBIL SCREENSHOT: ${screenshotErr.message}`);
+          }
         }
 
         try {
