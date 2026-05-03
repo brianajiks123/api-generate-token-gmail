@@ -486,8 +486,6 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
         await delay(2000);
 
         const clickedYesOption = await page.evaluate(() => {
-          logger.info("MENCARI OPSI 'TAP YES' DI HALAMAN 2-STEP VERIFICATION");
-          
           const allElements = document.querySelectorAll("*");
           for (const el of allElements) {
             const text = el.textContent || "";
