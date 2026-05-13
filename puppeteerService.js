@@ -58,8 +58,8 @@ async function getBrowser() {
         });
         window.chrome = {
           runtime: {},
-          loadTimes: function () {},
-          csi: function () {},
+          loadTimes: function () { },
+          csi: function () { },
           app: {},
         };
         const originalQuery = window.navigator.permissions.query;
@@ -74,7 +74,7 @@ async function getBrowser() {
           get: () => ["en-US", "en"],
         });
       });
-    } catch (_) {}
+    } catch (_) { }
   });
 
   browserInstance.on("disconnected", () => {
@@ -92,8 +92,8 @@ async function applyStealthToPage(page) {
     });
     window.chrome = {
       runtime: {},
-      loadTimes: function () {},
-      csi: function () {},
+      loadTimes: function () { },
+      csi: function () { },
       app: {},
     };
     const originalQuery = window.navigator.permissions.query;
@@ -125,7 +125,7 @@ async function getActivePage() {
   if (pages.length > 1) {
     logger.info(`MENUTUP ${pages.length - 1} TAB LAMA`);
     for (let i = 0; i < pages.length - 1; i++) {
-      await pages[i].close().catch(() => {});
+      await pages[i].close().catch(() => { });
     }
   }
 
@@ -366,8 +366,8 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       const cookies = await page.cookies();
       if (cookies.length > 0) await page.deleteCookie(...cookies);
       await page.evaluate(() => {
-        try { localStorage.clear(); } catch (_) {}
-        try { sessionStorage.clear(); } catch (_) {}
+        try { localStorage.clear(); } catch (_) { }
+        try { sessionStorage.clear(); } catch (_) { }
       });
       await delay(2000);
       return true;
@@ -413,7 +413,7 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
       await page.keyboard.press("Enter");
 
       await delay(8000);
-      
+
       // ── HANDLE CAPTCHA ──────────────────────────────────────────────────────
       logger.info("CEK APAKAH ADA CAPTCHA...");
       const hasCaptcha = await page.evaluate(() => {
@@ -430,16 +430,16 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
 
       if (hasCaptcha) {
         logger.warn("CAPTCHA TERDETEKSI — MENUNGGU USER INPUT CAPTCHA DAN KLIK NEXT");
-        
+
         try {
           await page.waitForFunction(
             () => {
               const currentUrl = window.location.href;
-              const isStillOnCaptchaPage = currentUrl.includes("/signin") && 
-                                         !currentUrl.includes("/challenge/");
+              const isStillOnCaptchaPage = currentUrl.includes("/signin") &&
+                !currentUrl.includes("/challenge/");
               return !isStillOnCaptchaPage;
             },
-            { timeout: 300000, polling: 2000 } // 5 minute timeout
+            { timeout: 300000, polling: 2000 }
           );
           logger.info("CAPTCHA SELESAI — USER SUDAH MENGINPUT DAN KLIK NEXT");
           await delay(3000);
@@ -485,90 +485,159 @@ async function _verifyGoogleForGetCode(email, password, clientId) {
         logger.warn("HALAMAN 2-STEP VERIFICATION TERDETEKSI");
         await delay(2000);
 
-        const clickedYesOption = await page.evaluate(() => {
+        // ── DETEKSI TIPE 2-STEP AUTH ────────────────────────────────────────
+        const twoStepType = await page.evaluate(() => {
+          const qrCodeElements = [
+            document.querySelector("img[alt*='QR']"),
+            document.querySelector("img[alt*='qr']"),
+            document.querySelector("canvas"),
+            document.querySelector("svg[data-qr]"),
+            document.querySelector("div[data-qr-code]"),
+          ];
+
+          const hasQRCode = qrCodeElements.some(el => el !== null);
+
+          const bodyText = document.body.innerText || "";
+          const hasQRText = bodyText.includes("Scan the QR code") ||
+            bodyText.includes("scan the QR code") ||
+            bodyText.includes("QR code");
+
+          if (hasQRCode || hasQRText) {
+            return "QR_CODE";
+          }
+
           const allElements = document.querySelectorAll("*");
           for (const el of allElements) {
             const text = el.textContent || "";
-            if ((text.includes("Tap Yes") || text.includes("Tap Yes on your phone") || 
-                 text.includes("Tap Yes on the device")) && el.offsetHeight > 0) {
-              let clickable = el;
-              let depth = 0;
-              while (clickable && depth < 5) {
-                if (clickable.tagName === "LI" || 
-                    clickable.getAttribute("role") === "button" ||
-                    clickable.getAttribute("role") === "link" ||
-                    clickable.tagName === "BUTTON" ||
-                    clickable.tagName === "A" ||
-                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
-                  clickable.click();
-                  return true;
-                }
-                clickable = clickable.parentElement;
-                depth++;
-              }
+            if ((text.includes("Tap Yes") || text.includes("Tap Yes on your phone") ||
+              text.includes("Tap Yes on the device")) && el.offsetHeight > 0) {
+              return "TAP_YES";
             }
           }
-          
-          const xpathPatterns = [
-            "//li[contains(., 'Tap Yes')]",
-            "//div[contains(., 'Tap Yes on your phone')]",
-            "//div[contains(., 'Tap Yes on the device')]",
-            "//*[contains(text(),'Tap Yes')]",
-            "//button[contains(., 'Tap Yes')]",
-          ];
-          
-          for (const xpath of xpathPatterns) {
-            const result = document.evaluate(
-              xpath, document, null,
-              XPathResult.FIRST_ORDERED_NODE_TYPE, null
-            );
-            const el = result.singleNodeValue;
-            if (el && el.offsetHeight > 0) {
-              let clickable = el;
-              let depth = 0;
-              while (clickable && depth < 5) {
-                if (clickable.tagName === "LI" || 
-                    clickable.getAttribute("role") === "button" ||
-                    clickable.getAttribute("role") === "link" ||
-                    clickable.tagName === "BUTTON" ||
-                    clickable.tagName === "A" ||
-                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
-                  clickable.click();
-                  return true;
-                }
-                clickable = clickable.parentElement;
-                depth++;
-              }
-            }
-          }
-          
-          return false;
+
+          return "UNKNOWN";
         });
 
-        if (clickedYesOption) {
-          logger.info("OPSI 'TAP YES' BERHASIL DIKLIK — MENUNGGU KONFIRMASI DI HP...");
-          await delay(2000);
-        } else {
-          logger.warn("OPSI 'TAP YES' TIDAK DITEMUKAN — MENUNGGU KONFIRMASI MANUAL DI HP...");
-          try {
-            await page.screenshot({ path: path.join(__dirname, "debug_2fa_page.png") });
-            logger.debug("SCREENSHOT HALAMAN 2FA DISIMPAN: debug_2fa_page.png");
-          } catch (screenshotErr) {
-            logger.debug(`GAGAL AMBIL SCREENSHOT: ${screenshotErr.message}`);
-          }
-        }
+        logger.info(`TIPE 2-STEP AUTH TERDETEKSI: ${twoStepType}`);
 
-        try {
-          await page.waitForFunction(
-            () => !window.location.href.includes("/signin/challenge/"),
-            { timeout: 120000, polling: 1500 }
-          );
-          logger.info("HALAMAN 2-STEP VERIFICATION SELESAI — HALAMAN SUDAH REDIRECT");
-          await delay(3000);
-        } catch (waitErr) {
-          logger.error("TIMEOUT MENUNGGU 2-STEP VERIFICATION (120 detik)");
-          reject(new Error("FAILED_GET_CODE"));
-          return;
+        if (twoStepType === "QR_CODE") {
+          logger.info("HALAMAN QR CODE TERDETEKSI — MENUNGGU USER SCAN QR CODE...");
+
+          try {
+            await page.waitForFunction(
+              () => !window.location.href.includes("/signin/challenge/"),
+              { timeout: 0, polling: 1500 } // timeout: 0 = no timeout
+            );
+            logger.info("QR CODE SUDAH DI-SCAN — HALAMAN SUDAH REDIRECT");
+            await delay(3000);
+          } catch (waitErr) {
+            logger.error("ERROR MENUNGGU QR CODE DI-SCAN");
+            reject(new Error("FAILED_GET_CODE"));
+            return;
+          }
+        } else if (twoStepType === "TAP_YES") {
+          logger.info("HALAMAN 'TAP YES' TERDETEKSI");
+
+          const clickedYesOption = await page.evaluate(() => {
+            const allElements = document.querySelectorAll("*");
+            for (const el of allElements) {
+              const text = el.textContent || "";
+              if ((text.includes("Tap Yes") || text.includes("Tap Yes on your phone") ||
+                text.includes("Tap Yes on the device")) && el.offsetHeight > 0) {
+                let clickable = el;
+                let depth = 0;
+                while (clickable && depth < 5) {
+                  if (clickable.tagName === "LI" ||
+                    clickable.getAttribute("role") === "button" ||
+                    clickable.getAttribute("role") === "link" ||
+                    clickable.tagName === "BUTTON" ||
+                    clickable.tagName === "A" ||
+                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
+                    clickable.click();
+                    return true;
+                  }
+                  clickable = clickable.parentElement;
+                  depth++;
+                }
+              }
+            }
+
+            const xpathPatterns = [
+              "//li[contains(., 'Tap Yes')]",
+              "//div[contains(., 'Tap Yes on your phone')]",
+              "//div[contains(., 'Tap Yes on the device')]",
+              "//*[contains(text(),'Tap Yes')]",
+              "//button[contains(., 'Tap Yes')]",
+            ];
+
+            for (const xpath of xpathPatterns) {
+              const result = document.evaluate(
+                xpath, document, null,
+                XPathResult.FIRST_ORDERED_NODE_TYPE, null
+              );
+              const el = result.singleNodeValue;
+              if (el && el.offsetHeight > 0) {
+                let clickable = el;
+                let depth = 0;
+                while (clickable && depth < 5) {
+                  if (clickable.tagName === "LI" ||
+                    clickable.getAttribute("role") === "button" ||
+                    clickable.getAttribute("role") === "link" ||
+                    clickable.tagName === "BUTTON" ||
+                    clickable.tagName === "A" ||
+                    (clickable.tagName === "DIV" && clickable.style.cursor === "pointer")) {
+                    clickable.click();
+                    return true;
+                  }
+                  clickable = clickable.parentElement;
+                  depth++;
+                }
+              }
+            }
+
+            return false;
+          });
+
+          if (clickedYesOption) {
+            logger.info("OPSI 'TAP YES' BERHASIL DIKLIK — MENUNGGU KONFIRMASI DI HP...");
+            await delay(2000);
+          } else {
+            logger.warn("OPSI 'TAP YES' TIDAK DITEMUKAN — MENUNGGU KONFIRMASI MANUAL DI HP...");
+            try {
+              await page.screenshot({ path: path.join(__dirname, "debug_2fa_page.png") });
+              logger.debug("SCREENSHOT HALAMAN 2FA DISIMPAN: debug_2fa_page.png");
+            } catch (screenshotErr) {
+              logger.debug(`GAGAL AMBIL SCREENSHOT: ${screenshotErr.message}`);
+            }
+          }
+
+          try {
+            await page.waitForFunction(
+              () => !window.location.href.includes("/signin/challenge/"),
+              { timeout: 120000, polling: 1500 }
+            );
+            logger.info("HALAMAN 'TAP YES' SELESAI — HALAMAN SUDAH REDIRECT");
+            await delay(3000);
+          } catch (waitErr) {
+            logger.error("TIMEOUT MENUNGGU 'TAP YES' VERIFICATION (120 detik)");
+            reject(new Error("FAILED_GET_CODE"));
+            return;
+          }
+        } else {
+          logger.warn("TIPE 2-STEP AUTH TIDAK TERDETEKSI — MENUNGGU REDIRECT HALAMAN...");
+
+          try {
+            await page.waitForFunction(
+              () => !window.location.href.includes("/signin/challenge/"),
+              { timeout: 120000, polling: 1500 }
+            );
+            logger.info("HALAMAN 2-STEP VERIFICATION SELESAI — HALAMAN SUDAH REDIRECT");
+            await delay(3000);
+          } catch (waitErr) {
+            logger.error("TIMEOUT MENUNGGU 2-STEP VERIFICATION (120 detik)");
+            reject(new Error("FAILED_GET_CODE"));
+            return;
+          }
         }
       }
 

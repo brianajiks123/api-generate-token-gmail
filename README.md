@@ -43,7 +43,8 @@ Puppeteer automatically handles various Google page states:
 | Signing Back In | Automatically clicks Continue |
 | Consent Summary | Automatically clicks Continue |
 | Signin Rejected | Clears cookies & session, then retries |
-| 2-Step Verification (selection page) | Automatically clicks the "Tap Yes" option (recovery email device), then waits for confirmation (120-second timeout) |
+| 2-Step Verification (QR Code) | Waits for user to scan QR code on their phone (no timeout) |
+| 2-Step Verification (Tap Yes) | Automatically clicks the "Tap Yes" option (recovery email device), then waits for confirmation (120-second timeout) |
 | Active session (UserData exists) | Skips email/password input, fetches code directly |
 
 ---
@@ -52,7 +53,7 @@ Puppeteer automatically handles various Google page states:
 
 - **Node.js** v18 or later
 - A **Google Cloud Project** with a configured OAuth 2.0 Client ID
-- The Google account used should ideally **not have 2FA enabled** (if 2FA is active, Puppeteer will automatically select the "Tap Yes" option on the method selection page, then wait for the user to confirm on their phone/recovery device within a 120-second timeout)
+- The Google account used should ideally **not have 2FA enabled** (if 2FA is active, Puppeteer will automatically handle it based on the method: QR code will wait for user to scan, or "Tap Yes" will auto-select and wait for confirmation on phone/recovery device within 120 seconds)
 - The Google account must be registered as a **Test User** in Google Cloud Console (if the app is still in *Testing* status)
 
 > See the full Google Cloud Console setup guide at [`docs/GOOGLE_CLOUD_SETUP.md`](docs/GOOGLE_CLOUD_SETUP.md).
@@ -251,7 +252,7 @@ In production, set `NODE_ENV=production` to disable console output.
 |---|---|---|
 | Browser does not open | Puppeteer not installed correctly | Run `npm install` again |
 | Login fails / timeout | Google detects bot or CAPTCHA appears | Retry; use an account that has previously logged in so a session is saved in `UserData/` |
-| `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s) | Verify credentials; if 2FA is active, Puppeteer will auto-select "Tap Yes" option and wait for confirmation on phone/recovery device within 120 seconds |
+| `FAILED_GET_CODE` | Wrong email/password, or 2FA timeout (120s for Tap Yes) | Verify credentials; if 2FA is active, Puppeteer will handle it automatically (QR code waits indefinitely, Tap Yes waits 120 seconds) |
 | `500 invalid_client` | Wrong `clientId` or `clientSecret` | Verify credentials in Google Cloud Console |
 | `redirect_uri_mismatch` | Redirect URI not registered | Add `http://localhost:4069/redirect` to Authorized redirect URIs |
 | `403 access_denied` | Email not registered as a Test User | Add the email in OAuth Consent Screen → Test Users |
@@ -264,7 +265,9 @@ In production, set `NODE_ENV=production` to disable console output.
 ## Important Notes
 
 - **Security:** Do not commit the `.env` file to the repository. Make sure `.env` is listed in `.gitignore`.
-- **2FA:** If the account has 2FA enabled, Puppeteer will automatically click the **"Tap Yes on the device your recovery email is signed into"** option on the method selection page, then wait for the user to confirm on their phone/recovery device for up to **120 seconds**. If not confirmed in time, the request fails with `FAILED_GET_CODE`.
+- **2FA:** If the account has 2FA enabled, Puppeteer will automatically handle it:
+  - **QR Code method:** Waits indefinitely for the user to scan the QR code on their phone. Once scanned and verified, the page redirects automatically.
+  - **Tap Yes method:** Automatically clicks the "Tap Yes on the device your recovery email is signed into" option, then waits for the user to confirm on their phone/recovery device for up to **120 seconds**. If not confirmed in time, the request fails with `FAILED_GET_CODE`.
 - **Headless mode:** The browser runs in `headless: false` mode (visible). This is required to avoid being detected as a bot by Google.
 - **Saved session:** The `UserData/` folder stores the Puppeteer browser session. If the account has logged in before, subsequent requests will be faster as they skip the email/password input step.
 - **Request queue:** The server processes one `POST /code` request at a time using a serial queue. Subsequent requests wait until the current one finishes.
