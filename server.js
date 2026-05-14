@@ -1,10 +1,15 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const dotenv = require("dotenv");
 const puppeteerServices = require("./puppeteerService");
 const logger = require("./src/utils/logger");
 
+// Load environment variables
+dotenv.config();
+
 const app = express();
+const PORT = process.env.port || 4000;
 
 app.use(express.json());
 
@@ -103,6 +108,6 @@ app.get("/redirect", async (req, res) => {
 });
 
 // ─── Start Server ─────────────────────────────────────────────────────────────
-app.listen(4069, () => {
-  logger.info("Server berjalan di http://localhost:4069");
+app.listen(PORT, () => {
+  logger.info(`Server berjalan di http://localhost:${PORT}`);
 });
